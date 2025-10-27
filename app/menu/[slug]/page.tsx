@@ -11,7 +11,7 @@ export default function MenuSlugPage() {
   const { tables } = useApp();
 
   // Find table by slug
-  const table = tables.find(t => t.slug === slug);
+  const table = tables.find((t: any) => t.slug === slug);
   const isValidTable = !!table;
 
   return (
