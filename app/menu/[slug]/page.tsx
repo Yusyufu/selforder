@@ -5,6 +5,8 @@ import Cart from '@/components/customer/Cart';
 import { useParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 
+export const dynamic = 'force-dynamic';
+
 export default function MenuSlugPage() {
   const params = useParams();
   const slug = params.slug as string;
