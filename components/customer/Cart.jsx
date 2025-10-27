@@ -127,14 +127,15 @@ function CartContent({
         {/* Customer Name Input */}
         <div>
           <label className="block text-sm font-semibold text-gray-900 mb-3">
-            Nama Customer (Opsional)
+            Nama Customer <span className="text-red-600">*</span>
           </label>
           <input
             type="text"
-            placeholder="Masukkan nama Anda"
+            placeholder="Masukkan nama Anda (wajib)"
             value={customerName}
             onChange={(e) => setCustomerName(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-900 bg-white text-gray-900 placeholder-gray-400"
+            required
           />
         </div>
 
@@ -149,19 +150,30 @@ function CartContent({
         {/* Place Order Button */}
         <button
           onClick={handlePlaceOrder}
-          disabled={!isValidTable}
+          disabled={!isValidTable || !customerName || customerName.trim() === ''}
           className={`w-full py-4 px-6 rounded-lg font-bold transition-all text-base ${
-            !isValidTable
+            !isValidTable || !customerName || customerName.trim() === ''
               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
               : 'bg-gray-900 text-white hover:bg-gray-800 active:scale-95'
           }`}
-          title={!isValidTable ? 'Nomor meja valid diperlukan untuk memesan' : ''}
+          title={
+            !isValidTable 
+              ? 'Nomor meja valid diperlukan untuk memesan' 
+              : !customerName || customerName.trim() === ''
+              ? 'Nama customer wajib diisi'
+              : ''
+          }
         >
           Pesan Sekarang
         </button>
         {!isValidTable && (
           <p className="text-sm text-red-600 text-center font-semibold">
             Nomor meja valid diperlukan untuk memesan
+          </p>
+        )}
+        {isValidTable && (!customerName || customerName.trim() === '') && (
+          <p className="text-sm text-red-600 text-center font-semibold">
+            Nama customer wajib diisi
           </p>
         )}
       </div>
@@ -203,6 +215,12 @@ export default function Cart({ table, isValidTable }) {
 
     if (!table || !isValidTable) {
       alert('Nomor meja valid diperlukan untuk memesan. Silakan pindai kode QR dari meja Anda.');
+      return;
+    }
+
+    // Validate customer name is required
+    if (!customerName || customerName.trim() === '') {
+      alert('Nama customer wajib diisi sebelum melakukan pemesanan.');
       return;
     }
 
