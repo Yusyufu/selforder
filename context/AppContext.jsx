@@ -361,6 +361,7 @@ export function AppProvider({ children }) {
     setMenuItems,
     orders,
     setOrders,
+    initialized,
     addTable,
     updateTable,
     deleteTable,

@@ -10,11 +10,14 @@ export const dynamic = 'force-dynamic';
 export default function MenuSlugPage() {
   const params = useParams();
   const slug = params.slug as string;
-  const { tables } = useApp();
+  const { tables, initialized } = useApp();
 
   // Find table by slug
   const table = tables.find((t: any) => t.slug === slug);
   const isValidTable = !!table;
+  
+  // Show loading while context is initializing
+  const isLoading = !initialized;
 
   return (
     <div className="min-h-screen bg-white">
@@ -37,32 +40,46 @@ export default function MenuSlugPage() {
       </div>
 
       <div className="container mx-auto max-w-7xl py-6 md:py-8">
-        {/* Alerts */}
-        <div className="mb-6 px-4 md:px-0">
-          {!isValidTable && (
-            <div className="bg-red-50 border border-red-200 text-red-900 px-5 py-4 rounded-lg">
-              <p className="font-semibold">
-                Link tidak valid
-              </p>
-              <p className="text-sm mt-1">Link QR code ini tidak valid atau sudah tidak aktif. Silakan pindai kode QR yang valid dari meja Anda.</p>
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+              <p className="text-gray-600">Memuat menu...</p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* Alerts */}
+        {!isLoading && (
+          <div className="mb-6 px-4 md:px-0">
+            {!isValidTable && (
+              <div className="bg-red-50 border border-red-200 text-red-900 px-5 py-4 rounded-lg">
+                <p className="font-semibold">
+                  Link tidak valid
+                </p>
+                <p className="text-sm mt-1">Link QR code ini tidak valid atau sudah tidak aktif. Silakan pindai kode QR yang valid dari meja Anda.</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Two Column Layout: Menu and Cart - Mobile-first responsive */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-          {/* Menu Display - Takes 2 columns on large screens */}
-          <div className="lg:col-span-2">
-            <MenuDisplay table={table} isValidTable={isValidTable} />
-          </div>
+        {!isLoading && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+            {/* Menu Display - Takes 2 columns on large screens */}
+            <div className="lg:col-span-2">
+              <MenuDisplay table={table} isValidTable={isValidTable} />
+            </div>
 
-          {/* Cart - Takes 1 column on large screens, sticky on desktop */}
-          <div className="lg:col-span-1">
-            <div className="lg:sticky lg:top-6">
-              <Cart table={table} isValidTable={isValidTable} />
+            {/* Cart - Takes 1 column on large screens, sticky on desktop */}
+            <div className="lg:col-span-1">
+              <div className="lg:sticky lg:top-6">
+                <Cart table={table} isValidTable={isValidTable} />
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
