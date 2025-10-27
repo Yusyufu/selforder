@@ -15,158 +15,7 @@ const generateTableSlug = () => {
   return slug;
 };
 
-// Sample data initialization
-const initializeSampleData = () => {
-  const sampleTables = [
-    { id: crypto.randomUUID(), tableNumber: '1', slug: generateTableSlug(), status: 'available' },
-    { id: crypto.randomUUID(), tableNumber: '2', slug: generateTableSlug(), status: 'available' },
-    { id: crypto.randomUUID(), tableNumber: '3', slug: generateTableSlug(), status: 'available' },
-  ];
-
-  const sampleMenuItems = [
-    // Appetizers
-    {
-      id: crypto.randomUUID(),
-      name: 'Spring Rolls',
-      description: 'Crispy vegetable spring rolls served with sweet chili sauce',
-      price: 45000,
-      category: 'Appetizers',
-      imageUrl: 'https://images.unsplash.com/photo-1529042410759-befb1204b468?w=400',
-      available: true,
-    },
-    {
-      id: crypto.randomUUID(),
-      name: 'Chicken Wings',
-      description: 'Spicy buffalo wings with ranch dipping sauce',
-      price: 55000,
-      category: 'Appetizers',
-      imageUrl: 'https://images.unsplash.com/photo-1608039755401-742074f0548d?w=400',
-      available: true,
-    },
-    {
-      id: crypto.randomUUID(),
-      name: 'Mozzarella Sticks',
-      description: 'Golden fried mozzarella with marinara sauce',
-      price: 50000,
-      category: 'Appetizers',
-      imageUrl: 'https://images.unsplash.com/photo-1531749668029-2db88e4276c7?w=400',
-      available: true,
-    },
-    // Main Course
-    {
-      id: crypto.randomUUID(),
-      name: 'Classic Burger',
-      description: 'Juicy beef patty with lettuce, tomato, and special sauce',
-      price: 85000,
-      category: 'Main Course',
-      imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400',
-      available: true,
-    },
-    {
-      id: crypto.randomUUID(),
-      name: 'Grilled Salmon',
-      description: 'Fresh Atlantic salmon with lemon butter and vegetables',
-      price: 150000,
-      category: 'Main Course',
-      imageUrl: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=400',
-      available: true,
-    },
-    {
-      id: crypto.randomUUID(),
-      name: 'Margherita Pizza',
-      description: 'Classic pizza with fresh mozzarella, basil, and tomato sauce',
-      price: 95000,
-      category: 'Main Course',
-      imageUrl: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=400',
-      available: true,
-    },
-    {
-      id: crypto.randomUUID(),
-      name: 'Chicken Alfredo',
-      description: 'Creamy fettuccine pasta with grilled chicken',
-      price: 105000,
-      category: 'Main Course',
-      imageUrl: 'https://images.unsplash.com/photo-1645112411341-6c4fd023714a?w=400',
-      available: true,
-    },
-    {
-      id: crypto.randomUUID(),
-      name: 'Steak & Fries',
-      description: 'Premium ribeye steak with crispy french fries',
-      price: 250000,
-      category: 'Main Course',
-      imageUrl: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?w=400',
-      available: false, // Example of unavailable item
-    },
-    // Desserts
-    {
-      id: crypto.randomUUID(),
-      name: 'Chocolate Lava Cake',
-      description: 'Warm chocolate cake with molten center and vanilla ice cream',
-      price: 55000,
-      category: 'Desserts',
-      imageUrl: 'https://images.unsplash.com/photo-1624353365286-3f8d62daad51?w=400',
-      available: true,
-    },
-    {
-      id: crypto.randomUUID(),
-      name: 'Cheesecake',
-      description: 'New York style cheesecake with berry compote',
-      price: 45000,
-      category: 'Desserts',
-      imageUrl: 'https://images.unsplash.com/photo-1533134486753-c833f0ed4866?w=400',
-      available: true,
-    },
-    {
-      id: crypto.randomUUID(),
-      name: 'Tiramisu',
-      description: 'Classic Italian dessert with coffee and mascarpone',
-      price: 50000,
-      category: 'Desserts',
-      imageUrl: 'https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=400',
-      available: true,
-    },
-    // Beverages
-    {
-      id: crypto.randomUUID(),
-      name: 'Fresh Lemonade',
-      description: 'Homemade lemonade with fresh lemons',
-      price: 25000,
-      category: 'Beverages',
-      imageUrl: 'https://images.unsplash.com/photo-1523677011781-c91d1bbe2f9d?w=400',
-      available: true,
-    },
-    {
-      id: crypto.randomUUID(),
-      name: 'Iced Coffee',
-      description: 'Cold brew coffee served over ice',
-      price: 30000,
-      category: 'Beverages',
-      imageUrl: 'https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?w=400',
-      available: true,
-    },
-    {
-      id: crypto.randomUUID(),
-      name: 'Smoothie',
-      description: 'Mixed berry smoothie with yogurt',
-      price: 40000,
-      category: 'Beverages',
-      imageUrl: 'https://images.unsplash.com/photo-1505252585461-04db1eb84625?w=400',
-      available: true,
-    },
-    {
-      id: crypto.randomUUID(),
-      name: 'Soft Drink',
-      description: 'Choice of cola, sprite, or orange soda',
-      price: 20000,
-      category: 'Beverages',
-      imageUrl: 'https://images.unsplash.com/photo-1581006852262-e4307cf6283a?w=400',
-      available: true,
-    },
-  ];
-
-  return { sampleTables, sampleMenuItems };
-};
+// No sample data - all data comes from Supabase
 
 export function AppProvider({ children }) {
   const [tables, setTables] = useState([]);
@@ -196,43 +45,17 @@ export function AppProvider({ children }) {
         const { menuItems: fetchedMenu } = await menuRes.json();
         const { orders: fetchedOrders } = ordersRes.ok ? await ordersRes.json() : { orders: [] };
 
-        // If database has data, use it
-        if (fetchedTables.length > 0 && fetchedMenu.length > 0) {
-          setTables(fetchedTables);
-          setMenuItems(fetchedMenu);
-          setOrders(fetchedOrders);
-        } else {
-          // Initialize with sample data and save to database
-          const { sampleTables, sampleMenuItems } = initializeSampleData();
-          
-          // Send sample data to Supabase
-          await Promise.all([
-            ...sampleTables.map(table => 
-              fetch('/api/tables', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(table),
-              })
-            ),
-            ...sampleMenuItems.map(item => 
-              fetch('/api/menu', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(item),
-              })
-            ),
-          ]);
-
-          setTables(sampleTables);
-          setMenuItems(sampleMenuItems);
-        }
+        // Use data from database (empty or not)
+        setTables(fetchedTables);
+        setMenuItems(fetchedMenu);
+        setOrders(fetchedOrders);
       }
     } catch (error) {
       console.error('Error initializing data:', error);
-      // Fallback to sample data
-      const { sampleTables, sampleMenuItems } = initializeSampleData();
-      setTables(sampleTables);
-      setMenuItems(sampleMenuItems);
+      // Set empty arrays on error
+      setTables([]);
+      setMenuItems([]);
+      setOrders([]);
     } finally {
       setInitialized(true);
     }
