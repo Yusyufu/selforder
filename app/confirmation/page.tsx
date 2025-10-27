@@ -3,8 +3,9 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { useCart } from '@/context/CartContext';
+import { Suspense } from 'react';
 
-export default function ConfirmationPage() {
+function ConfirmationContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { orders } = useApp();
@@ -150,5 +151,13 @@ export default function ConfirmationPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ConfirmationPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <ConfirmationContent />
+    </Suspense>
   );
 }

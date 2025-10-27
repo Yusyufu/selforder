@@ -4,8 +4,9 @@ import MenuDisplay from '@/components/customer/MenuDisplay';
 import Cart from '@/components/customer/Cart';
 import { useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { Suspense } from 'react';
 
-export default function MenuPage() {
+function MenuContent() {
   const searchParams = useSearchParams();
   const tableNumber = searchParams.get('table');
   const { tables } = useApp();
@@ -72,5 +73,13 @@ export default function MenuPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MenuPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <MenuContent />
+    </Suspense>
   );
 }
