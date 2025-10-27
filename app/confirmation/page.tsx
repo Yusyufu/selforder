@@ -1,27 +1,60 @@
 'use client';
 
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useApp } from '@/context/AppContext';
 import { useCart } from '@/context/CartContext';
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
 function ConfirmationContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { orders } = useApp();
   const { clearCart } = useCart();
+  const [order, setOrder] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   const orderId = searchParams.get('orderId');
   const tableNumber = searchParams.get('table');
 
-  // Find the order by ID
-  const order = orders.find((o: any) => o.id === orderId);
+  // Fetch order directly from API
+  useEffect(() => {
+    const fetchOrder = async () => {
+      if (!orderId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/orders');
+        if (response.ok) {
+          const { orders } = await response.json();
+          const foundOrder = orders.find((o: any) => o.id === orderId);
+          setOrder(foundOrder);
+        }
+      } catch (error) {
+        console.error('Error fetching order:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrder();
+  }, [orderId]);
 
   const handlePlaceAnotherOrder = () => {
     // Clear cart and return to menu
     clearCart();
     router.push(`/menu?table=${tableNumber}`);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mb-4"></div>
+          <p className="text-gray-600">Loading order...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!order) {
     return (
@@ -33,7 +66,7 @@ function ConfirmationContent() {
               Pesanan Tidak Ditemukan
             </h1>
             <p className="text-gray-600 mb-6">
-              Kami tidn't find your order. Please try again.
+              Kami tidak dapat menemukan pesanan Anda. Silakan coba lagi.
             </p>
             <button
               onClick={() => router.push(`/menu?table=${tableNumber}`)}
