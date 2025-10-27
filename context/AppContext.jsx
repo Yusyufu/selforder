@@ -181,22 +181,112 @@ export function AppProvider({ children }) {
     }
   }, []);
 
-  // Initialize data - frontend is source of truth
+  // Initialize data from Supabase
   const initializeData = async () => {
     try {
-      // Just set sample data - no API calls needed
+      // Fetch from API (Supabase backend)
+      const [tablesRes, menuRes, ordersRes] = await Promise.all([
+        fetch('/api/tables'),
+        fetch('/api/menu'),
+        fetch('/api/orders'),
+      ]);
+
+      if (tablesRes.ok && menuRes.ok) {
+        const { tables: fetchedTables } = await tablesRes.json();
+        const { menuItems: fetchedMenu } = await menuRes.json();
+        const { orders: fetchedOrders } = ordersRes.ok ? await ordersRes.json() : { orders: [] };
+
+        // If database has data, use it
+        if (fetchedTables.length > 0 && fetchedMenu.length > 0) {
+          setTables(fetchedTables);
+          setMenuItems(fetchedMenu);
+          setOrders(fetchedOrders);
+        } else {
+          // Initialize with sample data and save to database
+          const { sampleTables, sampleMenuItems } = initializeSampleData();
+          
+          // Send sample data to Supabase
+          await Promise.all([
+            ...sampleTables.map(table => 
+              fetch('/api/tables', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(table),
+              })
+            ),
+            ...sampleMenuItems.map(item => 
+              fetch('/api/menu', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(item),
+              })
+            ),
+          ]);
+
+          setTables(sampleTables);
+          setMenuItems(sampleMenuItems);
+        }
+      }
+    } catch (error) {
+      console.error('Error initializing data:', error);
+      // Fallback to sample data
       const { sampleTables, sampleMenuItems } = initializeSampleData();
       setTables(sampleTables);
       setMenuItems(sampleMenuItems);
-      setOrders([]);
-    } catch (error) {
-      console.error('Error initializing data:', error);
     } finally {
       setInitialized(true);
     }
   };
 
-  // No polling needed - frontend is the source of truth
+  // Fetch data from Supabase
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch('/api/orders');
+      if (response.ok) {
+        const { orders: fetchedOrders } = await response.json();
+        setOrders(fetchedOrders);
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    }
+  };
+
+  const fetchTables = async () => {
+    try {
+      const response = await fetch('/api/tables');
+      if (response.ok) {
+        const { tables: fetchedTables } = await response.json();
+        setTables(fetchedTables);
+      }
+    } catch (error) {
+      console.error('Error fetching tables:', error);
+    }
+  };
+
+  const fetchMenuItems = async () => {
+    try {
+      const response = await fetch('/api/menu');
+      if (response.ok) {
+        const { menuItems: fetchedMenu } = await response.json();
+        setMenuItems(fetchedMenu);
+      }
+    } catch (error) {
+      console.error('Error fetching menu:', error);
+    }
+  };
+
+  // Poll for updates every 3 seconds for real-time sync
+  useEffect(() => {
+    if (!initialized) return;
+    
+    const interval = setInterval(() => {
+      fetchOrders();
+      fetchTables();
+      fetchMenuItems();
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [initialized]);
 
   // Table management functions
   const addTable = async (tableNumber) => {
@@ -218,9 +308,22 @@ export function AppProvider({ children }) {
       status: 'available',
     };
 
-    // Update state directly - frontend is source of truth
-    setTables([...tables, newTable]);
-    return newTable;
+    try {
+      const response = await fetch('/api/tables', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTable),
+      });
+
+      if (!response.ok) throw new Error('Failed to create table');
+
+      const { table } = await response.json();
+      setTables([...tables, table]);
+      return table;
+    } catch (error) {
+      console.error('Error creating table:', error);
+      throw error;
+    }
   };
 
   const updateTable = async (id, updates) => {
@@ -234,13 +337,36 @@ export function AppProvider({ children }) {
       }
     }
 
-    // Update state directly
-    setTables(tables.map(t => t.id === id ? { ...t, ...updates } : t));
+    try {
+      const response = await fetch('/api/tables', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...updates }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update table');
+
+      const { table } = await response.json();
+      setTables(tables.map(t => t.id === id ? table : t));
+    } catch (error) {
+      console.error('Error updating table:', error);
+      throw error;
+    }
   };
 
   const deleteTable = async (id) => {
-    // Update state directly
-    setTables(tables.filter(table => table.id !== id));
+    try {
+      const response = await fetch(`/api/tables?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete table');
+
+      setTables(tables.filter(table => table.id !== id));
+    } catch (error) {
+      console.error('Error deleting table:', error);
+      throw error;
+    }
   };
 
   // Menu management functions
@@ -266,9 +392,22 @@ export function AppProvider({ children }) {
       available: menuItem.available !== undefined ? menuItem.available : true,
     };
 
-    // Update state directly
-    setMenuItems([...menuItems, newMenuItem]);
-    return newMenuItem;
+    try {
+      const response = await fetch('/api/menu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newMenuItem),
+      });
+
+      if (!response.ok) throw new Error('Failed to create menu item');
+
+      const { menuItem: createdItem } = await response.json();
+      setMenuItems([...menuItems, createdItem]);
+      return createdItem;
+    } catch (error) {
+      console.error('Error creating menu item:', error);
+      throw error;
+    }
   };
 
   const updateMenuItem = async (id, updates) => {
@@ -280,21 +419,57 @@ export function AppProvider({ children }) {
       }
     }
 
-    // Update state directly
-    setMenuItems(menuItems.map(item => item.id === id ? { ...item, ...updates } : item));
+    try {
+      const response = await fetch('/api/menu', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...updates }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update menu item');
+
+      const { menuItem } = await response.json();
+      setMenuItems(menuItems.map(item => item.id === id ? menuItem : item));
+    } catch (error) {
+      console.error('Error updating menu item:', error);
+      throw error;
+    }
   };
 
   const deleteMenuItem = async (id) => {
-    // Update state directly
-    setMenuItems(menuItems.filter(item => item.id !== id));
+    try {
+      const response = await fetch(`/api/menu?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete menu item');
+
+      setMenuItems(menuItems.filter(item => item.id !== id));
+    } catch (error) {
+      console.error('Error deleting menu item:', error);
+      throw error;
+    }
   };
 
   const toggleAvailability = async (id) => {
     const item = menuItems.find(item => item.id === id);
     if (!item) return;
 
-    // Update state directly
-    setMenuItems(menuItems.map(i => i.id === id ? { ...i, available: !i.available } : i));
+    try {
+      const response = await fetch('/api/menu', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, available: !item.available }),
+      });
+
+      if (!response.ok) throw new Error('Failed to toggle availability');
+
+      const { menuItem } = await response.json();
+      setMenuItems(menuItems.map(i => i.id === id ? menuItem : i));
+    } catch (error) {
+      console.error('Error toggling availability:', error);
+      throw error;
+    }
   };
 
   // Order management functions
@@ -304,27 +479,51 @@ export function AppProvider({ children }) {
       return sum + (item.price * item.quantity);
     }, 0);
 
-    const newOrder = {
+    const orderData = {
       id: crypto.randomUUID(),
       tableNumber,
       items,
       total,
       customerName,
       paymentType,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
     };
 
-    // Update state directly
-    setOrders([...orders, newOrder]);
-    return newOrder;
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData),
+      });
+
+      if (!response.ok) throw new Error('Failed to create order');
+
+      const { order: newOrder } = await response.json();
+      setOrders([...orders, newOrder]);
+      return newOrder;
+    } catch (error) {
+      console.error('Error creating order:', error);
+      throw error;
+    }
   };
 
   const updateOrderStatus = async (id, status) => {
-    // Update state directly
-    setOrders(orders.map(order =>
-      order.id === id ? { ...order, status } : order
-    ));
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update order');
+
+      const { order: updatedOrder } = await response.json();
+      setOrders(orders.map(order =>
+        order.id === id ? updatedOrder : order
+      ));
+    } catch (error) {
+      console.error('Error updating order:', error);
+      throw error;
+    }
   };
 
   // Reset all data to sample data (useful for demo/testing)

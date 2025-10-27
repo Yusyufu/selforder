@@ -1,35 +1,85 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
-// This API acts as a pass-through - frontend is the source of truth
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-// GET - Return empty array (frontend manages its own state)
+const supabase = supabaseUrl && supabaseKey 
+  ? createClient(supabaseUrl, supabaseKey)
+  : null;
+
+// GET - Fetch all orders from Supabase
 export async function GET() {
-  return NextResponse.json({ orders: [] });
+  if (!supabase) {
+    return NextResponse.json({ orders: [] });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return NextResponse.json({ orders: data || [] });
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    return NextResponse.json({ orders: [] });
+  }
 }
 
-// POST - Just generate ID and return the order
+// POST - Create new order in Supabase
 export async function POST(request: NextRequest) {
+  if (!supabase) {
+    return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
+  }
+
   try {
     const body = await request.json();
-    const newOrder = {
+    
+    const orderData = {
       ...body,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
       status: 'pending',
     };
     
-    return NextResponse.json({ order: newOrder }, { status: 201 });
+    const { data, error } = await supabase
+      .from('orders')
+      .insert([orderData])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json({ order: data }, { status: 201 });
   } catch (error) {
+    console.error('Error creating order:', error);
     return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
   }
 }
 
-// PATCH - Just return the updated order
+// PATCH - Update order status in Supabase
 export async function PATCH(request: NextRequest) {
+  if (!supabase) {
+    return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
+  }
+
   try {
     const body = await request.json();
-    return NextResponse.json({ order: body });
+    const { id, status } = body;
+
+    const { data, error } = await supabase
+      .from('orders')
+      .update({ status })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json({ order: data });
   } catch (error) {
+    console.error('Error updating order:', error);
     return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
   }
 }
