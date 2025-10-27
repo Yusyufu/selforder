@@ -1,10 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// In-memory store for menu items
-let menuItems: any[] = [];
+// Use global variable with persistence across requests in same instance
+const STORAGE_KEY = 'menu_data';
+
+if (!(global as any)[STORAGE_KEY]) {
+  (global as any)[STORAGE_KEY] = [];
+}
+
+function getMenuItems(): any[] {
+  return (global as any)[STORAGE_KEY] || [];
+}
+
+function setMenuItems(items: any[]) {
+  (global as any)[STORAGE_KEY] = items;
+}
 
 // GET - Fetch all menu items
 export async function GET() {
+  const menuItems = getMenuItems();
   return NextResponse.json({ menuItems });
 }
 
@@ -17,7 +30,9 @@ export async function POST(request: NextRequest) {
       id: crypto.randomUUID(),
     };
     
+    const menuItems = getMenuItems();
     menuItems.push(newMenuItem);
+    setMenuItems(menuItems);
     
     return NextResponse.json({ menuItem: newMenuItem }, { status: 201 });
   } catch (error) {
@@ -31,12 +46,14 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { id, ...updates } = body;
     
+    const menuItems = getMenuItems();
     const itemIndex = menuItems.findIndex(item => item.id === id);
     if (itemIndex === -1) {
       return NextResponse.json({ error: 'Menu item not found' }, { status: 404 });
     }
     
     menuItems[itemIndex] = { ...menuItems[itemIndex], ...updates };
+    setMenuItems(menuItems);
     
     return NextResponse.json({ menuItem: menuItems[itemIndex] });
   } catch (error) {
@@ -54,12 +71,14 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'ID is required' }, { status: 400 });
     }
     
+    const menuItems = getMenuItems();
     const itemIndex = menuItems.findIndex(item => item.id === id);
     if (itemIndex === -1) {
       return NextResponse.json({ error: 'Menu item not found' }, { status: 404 });
     }
     
     menuItems.splice(itemIndex, 1);
+    setMenuItems(menuItems);
     
     return NextResponse.json({ success: true });
   } catch (error) {

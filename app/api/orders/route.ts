@@ -1,10 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// In-memory store for orders (will reset on server restart)
-let orders: any[] = [];
+// Use global variable with persistence across requests in same instance
+const STORAGE_KEY = 'orders_data';
+
+if (!(global as any)[STORAGE_KEY]) {
+  (global as any)[STORAGE_KEY] = [];
+}
+
+function getOrders(): any[] {
+  return (global as any)[STORAGE_KEY] || [];
+}
+
+function setOrders(orders: any[]) {
+  (global as any)[STORAGE_KEY] = orders;
+}
 
 // GET - Fetch all orders
 export async function GET() {
+  const orders = getOrders();
   return NextResponse.json({ orders });
 }
 
@@ -19,7 +32,9 @@ export async function POST(request: NextRequest) {
       status: 'pending',
     };
     
+    const orders = getOrders();
     orders.push(newOrder);
+    setOrders(orders);
     
     return NextResponse.json({ order: newOrder }, { status: 201 });
   } catch (error) {
@@ -33,12 +48,14 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
     const { id, status } = body;
     
+    const orders = getOrders();
     const orderIndex = orders.findIndex(o => o.id === id);
     if (orderIndex === -1) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
     
     orders[orderIndex] = { ...orders[orderIndex], status };
+    setOrders(orders);
     
     return NextResponse.json({ order: orders[orderIndex] });
   } catch (error) {

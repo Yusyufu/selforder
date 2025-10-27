@@ -1,10 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// In-memory store for tables
-let tables: any[] = [];
+// Use global variable with persistence across requests in same instance
+// For Vercel, we'll use a simple in-memory cache with initialization
+const STORAGE_KEY = 'tables_data';
+
+// Global storage that persists across requests in the same instance
+if (!(global as any)[STORAGE_KEY]) {
+  (global as any)[STORAGE_KEY] = [];
+}
+
+function getTables(): any[] {
+  return (global as any)[STORAGE_KEY] || [];
+}
+
+function setTables(tables: any[]) {
+  (global as any)[STORAGE_KEY] = tables;
+}
 
 // GET - Fetch all tables
 export async function GET() {
+  const tables = getTables();
   return NextResponse.json({ tables });
 }
 
@@ -17,7 +32,9 @@ export async function POST(request: NextRequest) {
       id: crypto.randomUUID(),
     };
     
+    const tables = getTables();
     tables.push(newTable);
+    setTables(tables);
     
     return NextResponse.json({ table: newTable }, { status: 201 });
   } catch (error) {
@@ -31,12 +48,14 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { id, ...updates } = body;
     
+    const tables = getTables();
     const tableIndex = tables.findIndex(table => table.id === id);
     if (tableIndex === -1) {
       return NextResponse.json({ error: 'Table not found' }, { status: 404 });
     }
     
     tables[tableIndex] = { ...tables[tableIndex], ...updates };
+    setTables(tables);
     
     return NextResponse.json({ table: tables[tableIndex] });
   } catch (error) {
@@ -54,12 +73,14 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'ID is required' }, { status: 400 });
     }
     
+    const tables = getTables();
     const tableIndex = tables.findIndex(table => table.id === id);
     if (tableIndex === -1) {
       return NextResponse.json({ error: 'Table not found' }, { status: 404 });
     }
     
     tables.splice(tableIndex, 1);
+    setTables(tables);
     
     return NextResponse.json({ success: true });
   } catch (error) {
