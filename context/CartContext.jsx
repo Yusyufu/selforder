@@ -5,37 +5,9 @@ import { createContext, useContext, useState, useEffect } from 'react';
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
-  const [cartItems, setCartItems] = useState(() => {
-    // Load cart from localStorage on initial mount
-    if (typeof window !== 'undefined') {
-      const savedCart = localStorage.getItem('cartItems');
-      return savedCart ? JSON.parse(savedCart) : [];
-    }
-    return [];
-  });
-
-  const [customerName, setCustomerName] = useState(() => {
-    // Load customer name from localStorage on initial mount
-    if (typeof window !== 'undefined') {
-      const savedName = localStorage.getItem('customerName');
-      return savedName || '';
-    }
-    return '';
-  });
-
-  // Save cart to localStorage whenever it changes
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('cartItems', JSON.stringify(cartItems));
-    }
-  }, [cartItems]);
-
-  // Save customer name to localStorage whenever it changes
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('customerName', customerName);
-    }
-  }, [customerName]);
+  // Cart is session-only (no persistence)
+  const [cartItems, setCartItems] = useState([]);
+  const [customerName, setCustomerName] = useState('');
 
   // Add item to cart or update quantity if already exists
   const addToCart = (menuItem, quantity = 1, notes = '') => {

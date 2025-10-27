@@ -177,11 +177,6 @@ export function AppProvider({ children }) {
   // Load data from API on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // Clear old localStorage data
-      localStorage.removeItem('tables');
-      localStorage.removeItem('menuItems');
-      localStorage.removeItem('orders');
-      
       initializeData();
     }
   }, []);
@@ -234,18 +229,10 @@ export function AppProvider({ children }) {
       }
     } catch (error) {
       console.error('Error initializing data:', error);
-      // Fallback to localStorage
-      const savedTables = localStorage.getItem('tables');
-      const savedMenuItems = localStorage.getItem('menuItems');
-      
-      if (savedTables && savedMenuItems) {
-        setTables(JSON.parse(savedTables));
-        setMenuItems(JSON.parse(savedMenuItems));
-      } else {
-        const { sampleTables, sampleMenuItems } = initializeSampleData();
-        setTables(sampleTables);
-        setMenuItems(sampleMenuItems);
-      }
+      // If API fails, just use sample data locally (no localStorage)
+      const { sampleTables, sampleMenuItems } = initializeSampleData();
+      setTables(sampleTables);
+      setMenuItems(sampleMenuItems);
     } finally {
       setInitialized(true);
     }
@@ -555,13 +542,6 @@ export function AppProvider({ children }) {
 
   // Reset all data to sample data (useful for demo/testing)
   const resetData = async () => {
-    // Clear localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('tables');
-      localStorage.removeItem('menuItems');
-      localStorage.removeItem('orders');
-    }
-    
     // Re-initialize from API
     await initializeData();
   };
