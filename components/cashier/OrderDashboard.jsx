@@ -40,7 +40,11 @@ export default function OrderDashboard() {
   const processedOrders = orders.filter(order => order.status === 'processed');
 
   // Sort orders by timestamp (newest first)
-  const sortByNewest = (a, b) => new Date(b.createdAt) - new Date(a.createdAt);
+  const sortByNewest = (a, b) => {
+    const dateA = new Date(a.created_at || a.createdAt);
+    const dateB = new Date(b.created_at || b.createdAt);
+    return dateB - dateA;
+  };
 
   const handleAcknowledge = (orderId) => {
     updateOrderStatus(orderId, 'acknowledged');
@@ -61,12 +65,34 @@ export default function OrderDashboard() {
   };
 
   const formatTimestamp = (timestamp) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
+    if (!timestamp) return 'N/A';
+    
+    try {
+      const date = new Date(timestamp);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return 'N/A';
+      }
+      
+      // Format date and time
+      const dateStr = date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+      
+      const timeStr = date.toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+      
+      return `${dateStr} ${timeStr}`;
+    } catch (error) {
+      console.error('Error formatting timestamp:', error);
+      return 'N/A';
+    }
   };
 
   const formatCurrency = (amount) => {
@@ -92,7 +118,7 @@ export default function OrderDashboard() {
             Pesanan #{order.id.slice(0, 8)}
           </p>
           <p className="text-sm text-gray-600">
-            {formatTimestamp(order.createdAt)}
+            {formatTimestamp(order.created_at || order.createdAt)}
           </p>
           {order.paymentType && (
             <p className="text-xs text-gray-600 mt-1">
