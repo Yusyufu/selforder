@@ -174,30 +174,79 @@ export function AppProvider({ children }) {
   const [orders, setOrders] = useState([]);
   const [initialized, setInitialized] = useState(false);
 
-  // Load data from localStorage on mount
+  // Load data from API on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      initializeData();
+    }
+  }, []);
+
+  // Initialize data from API or sample data
+  const initializeData = async () => {
+    try {
+      // Fetch from API first
+      const [tablesRes, menuRes, ordersRes] = await Promise.all([
+        fetch('/api/tables'),
+        fetch('/api/menu'),
+        fetch('/api/orders'),
+      ]);
+
+      if (tablesRes.ok && menuRes.ok) {
+        const { tables: fetchedTables } = await tablesRes.json();
+        const { menuItems: fetchedMenu } = await menuRes.json();
+        const { orders: fetchedOrders } = ordersRes.ok ? await ordersRes.json() : { orders: [] };
+
+        // If API has data, use it
+        if (fetchedTables.length > 0 && fetchedMenu.length > 0) {
+          setTables(fetchedTables);
+          setMenuItems(fetchedMenu);
+          setOrders(fetchedOrders);
+        } else {
+          // Initialize with sample data and sync to API
+          const { sampleTables, sampleMenuItems } = initializeSampleData();
+          
+          // Send sample data to API
+          await Promise.all([
+            ...sampleTables.map(table => 
+              fetch('/api/tables', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(table),
+              })
+            ),
+            ...sampleMenuItems.map(item => 
+              fetch('/api/menu', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(item),
+              })
+            ),
+          ]);
+
+          setTables(sampleTables);
+          setMenuItems(sampleMenuItems);
+        }
+      }
+    } catch (error) {
+      console.error('Error initializing data:', error);
+      // Fallback to localStorage
       const savedTables = localStorage.getItem('tables');
       const savedMenuItems = localStorage.getItem('menuItems');
-
+      
       if (savedTables && savedMenuItems) {
-        // Load existing data from localStorage
         setTables(JSON.parse(savedTables));
         setMenuItems(JSON.parse(savedMenuItems));
       } else {
-        // Initialize with sample data if no saved data exists
         const { sampleTables, sampleMenuItems } = initializeSampleData();
         setTables(sampleTables);
         setMenuItems(sampleMenuItems);
       }
-      
-      // Fetch orders from API
-      fetchOrders();
+    } finally {
       setInitialized(true);
     }
-  }, []);
+  };
 
-  // Fetch orders from API
+  // Fetch data from API
   const fetchOrders = async () => {
     try {
       const response = await fetch('/api/orders');
@@ -210,12 +259,38 @@ export function AppProvider({ children }) {
     }
   };
 
-  // Poll for new orders every 5 seconds (for cashier dashboard)
+  const fetchTables = async () => {
+    try {
+      const response = await fetch('/api/tables');
+      if (response.ok) {
+        const { tables: fetchedTables } = await response.json();
+        setTables(fetchedTables);
+      }
+    } catch (error) {
+      console.error('Error fetching tables:', error);
+    }
+  };
+
+  const fetchMenuItems = async () => {
+    try {
+      const response = await fetch('/api/menu');
+      if (response.ok) {
+        const { menuItems: fetchedMenu } = await response.json();
+        setMenuItems(fetchedMenu);
+      }
+    } catch (error) {
+      console.error('Error fetching menu:', error);
+    }
+  };
+
+  // Poll for updates every 5 seconds
   useEffect(() => {
     if (!initialized) return;
     
     const interval = setInterval(() => {
       fetchOrders();
+      fetchTables();
+      fetchMenuItems();
     }, 5000); // Poll every 5 seconds
 
     return () => clearInterval(interval);
@@ -243,7 +318,7 @@ export function AppProvider({ children }) {
   }, [orders, initialized]);
 
   // Table management functions
-  const addTable = (tableNumber) => {
+  const addTable = async (tableNumber) => {
     // Validate table number is unique
     if (tables.some(table => table.tableNumber === tableNumber)) {
       throw new Error('Table number already exists');
@@ -251,24 +326,36 @@ export function AppProvider({ children }) {
 
     // Generate unique slug
     let slug = generateTableSlug();
-    // Ensure slug is unique (very unlikely to collide, but just in case)
     while (tables.some(table => table.slug === slug)) {
       slug = generateTableSlug();
     }
 
     const newTable = {
-      id: crypto.randomUUID(),
       tableNumber,
       slug,
       status: 'available',
     };
 
-    setTables([...tables, newTable]);
-    return newTable;
+    try {
+      const response = await fetch('/api/tables', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTable),
+      });
+
+      if (!response.ok) throw new Error('Failed to create table');
+
+      const { table } = await response.json();
+      setTables([...tables, table]);
+      return table;
+    } catch (error) {
+      console.error('Error creating table:', error);
+      throw error;
+    }
   };
 
-  const updateTable = (id, updates) => {
-    // If updating table number, validate it's unique
+  const updateTable = async (id, updates) => {
+    // Validate if updating table number
     if (updates.tableNumber) {
       const existingTable = tables.find(
         table => table.tableNumber === updates.tableNumber && table.id !== id
@@ -278,17 +365,40 @@ export function AppProvider({ children }) {
       }
     }
 
-    setTables(tables.map(table => 
-      table.id === id ? { ...table, ...updates } : table
-    ));
+    try {
+      const response = await fetch('/api/tables', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...updates }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update table');
+
+      const { table } = await response.json();
+      setTables(tables.map(t => t.id === id ? table : t));
+    } catch (error) {
+      console.error('Error updating table:', error);
+      throw error;
+    }
   };
 
-  const deleteTable = (id) => {
-    setTables(tables.filter(table => table.id !== id));
+  const deleteTable = async (id) => {
+    try {
+      const response = await fetch(`/api/tables?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete table');
+
+      setTables(tables.filter(table => table.id !== id));
+    } catch (error) {
+      console.error('Error deleting table:', error);
+      throw error;
+    }
   };
 
   // Menu management functions
-  const addMenuItem = (menuItem) => {
+  const addMenuItem = async (menuItem) => {
     // Validate required fields
     if (!menuItem.name || !menuItem.price || !menuItem.category) {
       throw new Error('Name, price, and category are required');
@@ -301,7 +411,6 @@ export function AppProvider({ children }) {
     }
 
     const newMenuItem = {
-      id: crypto.randomUUID(),
       name: menuItem.name,
       description: menuItem.description || '',
       price: price,
@@ -310,11 +419,25 @@ export function AppProvider({ children }) {
       available: menuItem.available !== undefined ? menuItem.available : true,
     };
 
-    setMenuItems([...menuItems, newMenuItem]);
-    return newMenuItem;
+    try {
+      const response = await fetch('/api/menu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newMenuItem),
+      });
+
+      if (!response.ok) throw new Error('Failed to create menu item');
+
+      const { menuItem: createdItem } = await response.json();
+      setMenuItems([...menuItems, createdItem]);
+      return createdItem;
+    } catch (error) {
+      console.error('Error creating menu item:', error);
+      throw error;
+    }
   };
 
-  const updateMenuItem = (id, updates) => {
+  const updateMenuItem = async (id, updates) => {
     // Validate price if it's being updated
     if (updates.price !== undefined) {
       const price = parseFloat(updates.price);
@@ -323,19 +446,57 @@ export function AppProvider({ children }) {
       }
     }
 
-    setMenuItems(menuItems.map(item =>
-      item.id === id ? { ...item, ...updates } : item
-    ));
+    try {
+      const response = await fetch('/api/menu', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...updates }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update menu item');
+
+      const { menuItem } = await response.json();
+      setMenuItems(menuItems.map(item => item.id === id ? menuItem : item));
+    } catch (error) {
+      console.error('Error updating menu item:', error);
+      throw error;
+    }
   };
 
-  const deleteMenuItem = (id) => {
-    setMenuItems(menuItems.filter(item => item.id !== id));
+  const deleteMenuItem = async (id) => {
+    try {
+      const response = await fetch(`/api/menu?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete menu item');
+
+      setMenuItems(menuItems.filter(item => item.id !== id));
+    } catch (error) {
+      console.error('Error deleting menu item:', error);
+      throw error;
+    }
   };
 
-  const toggleAvailability = (id) => {
-    setMenuItems(menuItems.map(item =>
-      item.id === id ? { ...item, available: !item.available } : item
-    ));
+  const toggleAvailability = async (id) => {
+    const item = menuItems.find(item => item.id === id);
+    if (!item) return;
+
+    try {
+      const response = await fetch('/api/menu', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, available: !item.available }),
+      });
+
+      if (!response.ok) throw new Error('Failed to toggle availability');
+
+      const { menuItem } = await response.json();
+      setMenuItems(menuItems.map(i => i.id === id ? menuItem : i));
+    } catch (error) {
+      console.error('Error toggling availability:', error);
+      throw error;
+    }
   };
 
   // Order management functions
