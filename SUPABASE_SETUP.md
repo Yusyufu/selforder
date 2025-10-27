@@ -59,18 +59,37 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 
 ## Troubleshooting
 
+### Check if Supabase is configured
+1. Go to: `http://localhost:3000/api/check-env`
+2. Should show both variables as "SET ✅"
+3. If "NOT SET ❌", check your `.env.local` file
+
+### Test Supabase connection
+1. Go to: `http://localhost:3000/api/test-supabase`
+2. Should show "success" status
+3. If error, check the error message
+
 ### "relation does not exist" error
 - Make sure you ran the SQL schema in Step 2
 - Check the table names match exactly (case-sensitive)
+- Verify in Supabase: Table Editor → should see 3 tables
 
 ### Data not syncing
 - Check environment variables are set correctly
 - Check browser console for errors
 - Verify RLS policies are enabled in Supabase
+- Check Network tab for API errors
 
 ### "Invalid API key" error
 - Double-check you copied the **anon public** key (not service_role)
 - Make sure there are no extra spaces in `.env.local`
+- Restart dev server after adding env variables
+
+### 500 Error when creating table
+1. Check `/api/check-env` - env variables set?
+2. Check `/api/test-supabase` - connection working?
+3. Check browser console for detailed error
+4. Check Supabase logs in dashboard
 
 ## Features
 

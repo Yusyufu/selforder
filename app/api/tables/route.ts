@@ -32,11 +32,19 @@ export async function GET() {
 // POST - Create new table in Supabase
 export async function POST(request: NextRequest) {
   if (!supabase) {
-    return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
+    console.error('Supabase not configured. URL:', supabaseUrl ? 'exists' : 'missing', 'Key:', supabaseKey ? 'exists' : 'missing');
+    return NextResponse.json({ 
+      error: 'Supabase not configured',
+      details: {
+        hasUrl: !!supabaseUrl,
+        hasKey: !!supabaseKey
+      }
+    }, { status: 500 });
   }
 
   try {
     const body = await request.json();
+    console.log('Creating table with data:', body);
     
     const { data, error } = await supabase
       .from('tables')
@@ -44,12 +52,19 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error:', error);
+      throw error;
+    }
 
+    console.log('Table created successfully:', data);
     return NextResponse.json({ table: data }, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating table:', error);
-    return NextResponse.json({ error: 'Failed to create table' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Failed to create table',
+      details: error.message || String(error)
+    }, { status: 500 });
   }
 }
 
