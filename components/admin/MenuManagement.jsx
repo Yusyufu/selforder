@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
+import { supabase } from '@/lib/supabase';
 
 export default function MenuManagement() {
   const { menuItems, addMenuItem, updateMenuItem, deleteMenuItem, toggleAvailability } = useApp();
@@ -16,6 +17,9 @@ export default function MenuManagement() {
     available: true,
   });
   const [errors, setErrors] = useState({});
+  const [uploading, setUploading] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
 
   // Categories for the dropdown
   const categories = ['Appetizers', 'Main Course', 'Desserts', 'Beverages'];
@@ -28,6 +32,68 @@ export default function MenuManagement() {
     acc[item.category].push(item);
     return acc;
   }, {});
+
+  // Handle image file selection
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setErrors({ ...errors, image: 'Please select an image file' });
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setErrors({ ...errors, image: 'Image size must be less than 5MB' });
+        return;
+      }
+
+      setImageFile(file);
+      setErrors({ ...errors, image: '' });
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Upload image to Supabase Storage
+  const uploadImage = async () => {
+    if (!imageFile) return formData.imageUrl;
+
+    setUploading(true);
+    try {
+      const fileExt = imageFile.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `menu/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('menu-images')
+        .upload(filePath, imageFile, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) throw error;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('menu-images')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      setErrors({ ...errors, image: 'Failed to upload image' });
+      return formData.imageUrl;
+    } finally {
+      setUploading(false);
+    }
+  };
 
   // Validate menu item form
   const validateMenuForm = () => {
@@ -57,8 +123,9 @@ export default function MenuManagement() {
       newErrors.category = 'Category is required';
     }
 
-    // Validate image URL if provided
-    if (formData.imageUrl && formData.imageUrl.trim() !== '') {
+    // Image validation handled in handleImageChange
+    // No URL validation needed anymore
+    if (false) {
       try {
         new URL(formData.imageUrl);
       } catch {
@@ -71,7 +138,7 @@ export default function MenuManagement() {
   };
 
   // Handle create menu item form submission
-  const handleCreate = (e) => {
+  const handleCreate = async (e) => {
     e.preventDefault();
     setErrors({});
 
@@ -80,11 +147,17 @@ export default function MenuManagement() {
     }
 
     try {
+      // Upload image first if there's a file
+      const imageUrl = await uploadImage();
+
       addMenuItem({
         ...formData,
         name: formData.name.trim(),
         price: parseFloat(formData.price),
+        imageUrl: imageUrl || '',
       });
+      
+      // Reset form
       setFormData({
         name: '',
         description: '',
@@ -93,6 +166,8 @@ export default function MenuManagement() {
         imageUrl: '',
         available: true,
       });
+      setImageFile(null);
+      setImagePreview(null);
       setIsCreating(false);
     } catch (err) {
       setErrors({ general: err.message });
@@ -100,7 +175,7 @@ export default function MenuManagement() {
   };
 
   // Handle edit menu item form submission
-  const handleEdit = (e) => {
+  const handleEdit = async (e) => {
     e.preventDefault();
     setErrors({});
 
@@ -109,9 +184,13 @@ export default function MenuManagement() {
     }
 
     try {
+      // Upload new image if file selected
+      const imageUrl = await uploadImage();
+
       updateMenuItem(editingId, {
         ...formData,
         name: formData.name.trim(),
+        imageUrl: imageUrl || formData.imageUrl,
         price: parseFloat(formData.price),
       });
       setEditingId(null);
@@ -146,6 +225,8 @@ export default function MenuManagement() {
       imageUrl: item.imageUrl,
       available: item.available,
     });
+    setImageFile(null);
+    setImagePreview(null); // Will show existing imageUrl instead
     setIsCreating(false);
     setErrors({});
   };
@@ -162,6 +243,8 @@ export default function MenuManagement() {
       imageUrl: '',
       available: true,
     });
+    setImageFile(null);
+    setImagePreview(null);
     setErrors({});
   };
 
@@ -286,25 +369,39 @@ export default function MenuManagement() {
                 )}
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-2 text-gray-900">Image URL</label>
-                <input
-                  type="text"
-                  value={formData.imageUrl}
-                  onChange={(e) => {
-                    setFormData({ ...formData, imageUrl: e.target.value });
-                    if (errors.imageUrl) {
-                      setErrors({ ...errors, imageUrl: '' });
-                    }
-                  }}
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                    errors.imageUrl 
-                      ? 'border-red-500 focus:ring-red-500' 
-                      : 'border-gray-300 focus:ring-black focus:border-black'
-                  }`}
-                  placeholder="https://example.com/image.jpg"
-                />
-                {errors.imageUrl && (
-                  <p className="text-red-600 text-sm mt-2 font-medium">{errors.imageUrl}</p>
+                <label className="block text-sm font-semibold mb-2 text-gray-900">Image</label>
+                
+                {/* Image Preview */}
+                {(imagePreview || formData.imageUrl) && (
+                  <div className="mb-3">
+                    <img 
+                      src={imagePreview || formData.imageUrl} 
+                      alt="Preview" 
+                      className="w-32 h-32 object-cover rounded-lg border-2 border-gray-200"
+                    />
+                  </div>
+                )}
+                
+                {/* File Upload */}
+                <div className="flex items-center gap-3">
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
+                    <div className="px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 transition-colors font-semibold text-sm">
+                      {uploading ? 'Uploading...' : 'Choose Image'}
+                    </div>
+                  </label>
+                  {imageFile && (
+                    <span className="text-sm text-gray-600">{imageFile.name}</span>
+                  )}
+                </div>
+                
+                {errors.image && (
+                  <p className="text-red-600 text-sm mt-2 font-medium">{errors.image}</p>
                 )}
               </div>
             </div>
