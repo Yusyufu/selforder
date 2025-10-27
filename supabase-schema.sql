@@ -31,6 +31,14 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_tables_status ON tables(status);
+CREATE INDEX IF NOT EXISTS idx_menu_items_category ON menu_items(category);
+CREATE INDEX IF NOT EXISTS idx_menu_items_available ON menu_items(available);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+CREATE INDEX IF NOT EXISTS idx_orders_table ON orders("tableNumber");
+CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
+
 -- Enable Row Level Security (RLS)
 ALTER TABLE tables ENABLE ROW LEVEL SECURITY;
 ALTER TABLE menu_items ENABLE ROW LEVEL SECURITY;
