@@ -177,6 +177,11 @@ export function AppProvider({ children }) {
   // Load data from API on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // Clear old localStorage data
+      localStorage.removeItem('tables');
+      localStorage.removeItem('menuItems');
+      localStorage.removeItem('orders');
+      
       initializeData();
     }
   }, []);
@@ -295,27 +300,6 @@ export function AppProvider({ children }) {
 
     return () => clearInterval(interval);
   }, [initialized]);
-
-  // Save tables to localStorage whenever they change
-  useEffect(() => {
-    if (initialized && typeof window !== 'undefined') {
-      localStorage.setItem('tables', JSON.stringify(tables));
-    }
-  }, [tables, initialized]);
-
-  // Save menuItems to localStorage whenever they change
-  useEffect(() => {
-    if (initialized && typeof window !== 'undefined') {
-      localStorage.setItem('menuItems', JSON.stringify(menuItems));
-    }
-  }, [menuItems, initialized]);
-
-  // Save orders to localStorage whenever they change
-  useEffect(() => {
-    if (initialized && typeof window !== 'undefined') {
-      localStorage.setItem('orders', JSON.stringify(orders));
-    }
-  }, [orders, initialized]);
 
   // Table management functions
   const addTable = async (tableNumber) => {
@@ -570,16 +554,16 @@ export function AppProvider({ children }) {
   };
 
   // Reset all data to sample data (useful for demo/testing)
-  const resetData = () => {
-    const { sampleTables, sampleMenuItems } = initializeSampleData();
-    setTables(sampleTables);
-    setMenuItems(sampleMenuItems);
-    setOrders([]);
+  const resetData = async () => {
+    // Clear localStorage
     if (typeof window !== 'undefined') {
       localStorage.removeItem('tables');
       localStorage.removeItem('menuItems');
       localStorage.removeItem('orders');
     }
+    
+    // Re-initialize from API
+    await initializeData();
   };
 
   const value = {

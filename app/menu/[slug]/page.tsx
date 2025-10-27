@@ -16,8 +16,8 @@ export default function MenuSlugPage() {
   const table = tables.find((t: any) => t.slug === slug);
   const isValidTable = !!table;
   
-  // Show loading while context is initializing
-  const isLoading = !initialized;
+  // Show loading while context is initializing OR tables are empty
+  const isLoading = !initialized || tables.length === 0;
 
   return (
     <div className="min-h-screen bg-white">
