@@ -196,7 +196,7 @@ export default function Cart({ table, isValidTable }) {
     removeFromCart(menuItemId);
   };
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     if (cartItems.length === 0) {
       return;
     }
@@ -208,7 +208,13 @@ export default function Cart({ table, isValidTable }) {
 
     try {
       // Create order with table number, cart items, customer name, and payment type
-      const order = createOrder(table.tableNumber, cartItems, customerName, paymentType);
+      console.log('Creating order...');
+      const order = await createOrder(table.tableNumber, cartItems, customerName, paymentType);
+      console.log('Order created:', order);
+      
+      if (!order || !order.id) {
+        throw new Error('Order ID not returned from createOrder');
+      }
       
       // Clear cart after successful order
       clearCart();
@@ -216,7 +222,8 @@ export default function Cart({ table, isValidTable }) {
       // Close modal if open
       setIsModalOpen(false);
       
-      // Navigate to confirmation page
+      // Navigate to confirmation page with orderId
+      console.log('Redirecting to confirmation with orderId:', order.id);
       router.push(`/confirmation?orderId=${order.id}&table=${table.tableNumber}`);
     } catch (error) {
       console.error('Error placing order:', error);
