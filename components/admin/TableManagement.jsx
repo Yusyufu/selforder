@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import QRCode from 'react-qr-code';
 
-export default function TableManagement() {
+function TableManagement() {
   const { tables, addTable, updateTable, deleteTable } = useApp();
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -273,3 +273,5 @@ export default function TableManagement() {
     </div>
   );
 }
+
+export default TableManagement;

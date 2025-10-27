@@ -261,12 +261,27 @@ export function AppProvider({ children }) {
       const response = await fetch('/api/tables');
       if (response.ok) {
         const { tables: fetchedTables } = await response.json();
-        // Only update if data actually changed to prevent unnecessary re-renders
+        // Only update if data actually changed
         setTables(prev => {
-          if (JSON.stringify(prev) !== JSON.stringify(fetchedTables)) {
+          // Check if lengths are different
+          if (prev.length !== fetchedTables.length) {
             return fetchedTables;
           }
-          return prev;
+          
+          // Check if any table data changed
+          const hasChanges = fetchedTables.some((newTable, index) => {
+            const oldTable = prev.find(t => t.id === newTable.id);
+            if (!oldTable) return true;
+            
+            // Compare key fields
+            return (
+              oldTable.tableNumber !== newTable.tableNumber ||
+              oldTable.status !== newTable.status ||
+              oldTable.slug !== newTable.slug
+            );
+          });
+          
+          return hasChanges ? fetchedTables : prev;
         });
       }
     } catch (error) {
@@ -279,12 +294,28 @@ export function AppProvider({ children }) {
       const response = await fetch('/api/menu');
       if (response.ok) {
         const { menuItems: fetchedMenu } = await response.json();
-        // Only update if data actually changed to prevent unnecessary re-renders
+        // Only update if data actually changed
         setMenuItems(prev => {
-          if (JSON.stringify(prev) !== JSON.stringify(fetchedMenu)) {
+          // Check if lengths are different
+          if (prev.length !== fetchedMenu.length) {
             return fetchedMenu;
           }
-          return prev;
+          
+          // Check if any menu item changed
+          const hasChanges = fetchedMenu.some((newItem, index) => {
+            const oldItem = prev.find(i => i.id === newItem.id);
+            if (!oldItem) return true;
+            
+            // Compare key fields
+            return (
+              oldItem.name !== newItem.name ||
+              oldItem.price !== newItem.price ||
+              oldItem.available !== newItem.available ||
+              oldItem.category !== newItem.category
+            );
+          });
+          
+          return hasChanges ? fetchedMenu : prev;
         });
       }
     } catch (error) {
