@@ -179,22 +179,47 @@ export function AppProvider({ children }) {
     if (typeof window !== 'undefined') {
       const savedTables = localStorage.getItem('tables');
       const savedMenuItems = localStorage.getItem('menuItems');
-      const savedOrders = localStorage.getItem('orders');
 
       if (savedTables && savedMenuItems) {
         // Load existing data from localStorage
         setTables(JSON.parse(savedTables));
         setMenuItems(JSON.parse(savedMenuItems));
-        setOrders(savedOrders ? JSON.parse(savedOrders) : []);
       } else {
         // Initialize with sample data if no saved data exists
         const { sampleTables, sampleMenuItems } = initializeSampleData();
         setTables(sampleTables);
         setMenuItems(sampleMenuItems);
       }
+      
+      // Fetch orders from API
+      fetchOrders();
       setInitialized(true);
     }
   }, []);
+
+  // Fetch orders from API
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch('/api/orders');
+      if (response.ok) {
+        const { orders: fetchedOrders } = await response.json();
+        setOrders(fetchedOrders);
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    }
+  };
+
+  // Poll for new orders every 5 seconds (for cashier dashboard)
+  useEffect(() => {
+    if (!initialized) return;
+    
+    const interval = setInterval(() => {
+      fetchOrders();
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [initialized]);
 
   // Save tables to localStorage whenever they change
   useEffect(() => {
@@ -314,31 +339,73 @@ export function AppProvider({ children }) {
   };
 
   // Order management functions
-  const createOrder = (tableNumber, items, customerName = '', paymentType = 'QRIS') => {
+  const createOrder = async (tableNumber, items, customerName = '', paymentType = 'QRIS') => {
     // Calculate order total from items
     const total = items.reduce((sum, item) => {
       return sum + (item.price * item.quantity);
     }, 0);
 
-    const newOrder = {
-      id: crypto.randomUUID(),
+    const orderData = {
       tableNumber,
       items,
       total,
       customerName,
       paymentType,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
     };
 
-    setOrders([...orders, newOrder]);
-    return newOrder;
+    try {
+      // Send to API
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData),
+      });
+
+      if (!response.ok) throw new Error('Failed to create order');
+
+      const { order: newOrder } = await response.json();
+      
+      // Update local state
+      setOrders([...orders, newOrder]);
+      return newOrder;
+    } catch (error) {
+      console.error('Error creating order:', error);
+      // Fallback to local only if API fails
+      const newOrder = {
+        id: crypto.randomUUID(),
+        ...orderData,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+      };
+      setOrders([...orders, newOrder]);
+      return newOrder;
+    }
   };
 
-  const updateOrderStatus = (id, status) => {
-    setOrders(orders.map(order =>
-      order.id === id ? { ...order, status } : order
-    ));
+  const updateOrderStatus = async (id, status) => {
+    try {
+      // Send to API
+      const response = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update order');
+
+      const { order: updatedOrder } = await response.json();
+      
+      // Update local state
+      setOrders(orders.map(order =>
+        order.id === id ? updatedOrder : order
+      ));
+    } catch (error) {
+      console.error('Error updating order:', error);
+      // Fallback to local only if API fails
+      setOrders(orders.map(order =>
+        order.id === id ? { ...order, status } : order
+      ));
+    }
   };
 
   // Reset all data to sample data (useful for demo/testing)
