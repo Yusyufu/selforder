@@ -14,8 +14,12 @@ function ConfirmationContent() {
   const orderId = searchParams.get('orderId');
   const tableNumber = searchParams.get('table');
 
-  // Fetch order directly from API
+  // Fetch order directly from API with retry logic
   useEffect(() => {
+    let retryCount = 0;
+    const maxRetries = 5;
+    let retryTimeout: NodeJS.Timeout;
+
     const fetchOrder = async () => {
       if (!orderId) {
         setLoading(false);
@@ -23,20 +27,49 @@ function ConfirmationContent() {
       }
 
       try {
+        console.log(`Fetching order ${orderId}, attempt ${retryCount + 1}/${maxRetries}`);
+        
         const response = await fetch('/api/orders');
         if (response.ok) {
           const { orders } = await response.json();
+          console.log(`Found ${orders.length} orders in database`);
+          
           const foundOrder = orders.find((o: any) => o.id === orderId);
-          setOrder(foundOrder);
+          
+          if (foundOrder) {
+            console.log('Order found:', foundOrder);
+            setOrder(foundOrder);
+            setLoading(false);
+          } else if (retryCount < maxRetries) {
+            // Order not found yet, retry after delay
+            console.log(`Order not found, retrying in 1 second...`);
+            retryCount++;
+            retryTimeout = setTimeout(fetchOrder, 1000);
+          } else {
+            // Max retries reached
+            console.error('Order not found after max retries');
+            setLoading(false);
+          }
         }
       } catch (error) {
         console.error('Error fetching order:', error);
-      } finally {
-        setLoading(false);
+        
+        if (retryCount < maxRetries) {
+          retryCount++;
+          retryTimeout = setTimeout(fetchOrder, 1000);
+        } else {
+          setLoading(false);
+        }
       }
     };
 
-    fetchOrder();
+    // Start fetching with small initial delay to let database save
+    const initialTimeout = setTimeout(fetchOrder, 500);
+
+    return () => {
+      clearTimeout(initialTimeout);
+      clearTimeout(retryTimeout);
+    };
   }, [orderId]);
 
   const handlePlaceAnotherOrder = () => {
@@ -58,22 +91,44 @@ function ConfirmationContent() {
 
   if (!order) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="max-w-md w-full">
           <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
             <div className="text-6xl mb-4">❌</div>
             <h1 className="text-2xl font-bold text-gray-900 mb-4">
               Pesanan Tidak Ditemukan
             </h1>
-            <p className="text-gray-600 mb-6">
-              Kami tidak dapat menemukan pesanan Anda. Silakan coba lagi.
+            <p className="text-gray-600 mb-4">
+              Kami tidak dapat menemukan pesanan Anda setelah beberapa kali percobaan.
             </p>
-            <button
-              onClick={() => router.push(`/menu?table=${tableNumber}`)}
-              className="bg-black text-white py-4 px-6 rounded-lg font-bold hover:bg-gray-800 transition-all active:scale-95"
-            >
-              Kembali ke Menu
-            </button>
+            
+            {/* Debug Info */}
+            {orderId && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 text-left">
+                <p className="text-xs font-semibold text-gray-600 mb-2">Debug Info:</p>
+                <p className="text-xs text-gray-700 font-mono break-all">
+                  Order ID: {orderId}
+                </p>
+                <p className="text-xs text-gray-700 mt-2">
+                  Kemungkinan pesanan sedang diproses. Silakan cek di cashier atau coba refresh halaman ini.
+                </p>
+              </div>
+            )}
+            
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-blue-600 text-white py-3 px-6 rounded-lg font-bold hover:bg-blue-700 transition-all active:scale-95"
+              >
+                Refresh Halaman
+              </button>
+              <button
+                onClick={() => router.push(`/menu?table=${tableNumber}`)}
+                className="bg-black text-white py-3 px-6 rounded-lg font-bold hover:bg-gray-800 transition-all active:scale-95"
+              >
+                Kembali ke Menu
+              </button>
+            </div>
           </div>
         </div>
       </div>
