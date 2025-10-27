@@ -184,7 +184,13 @@ export function AppProvider({ children }) {
   // Initialize data from API or sample data
   const initializeData = async () => {
     try {
-      // Fetch from API first
+      // Set sample data immediately to avoid blank screen
+      const { sampleTables, sampleMenuItems } = initializeSampleData();
+      setTables(sampleTables);
+      setMenuItems(sampleMenuItems);
+      setOrders([]);
+      
+      // Then fetch from API
       const [tablesRes, menuRes, ordersRes] = await Promise.all([
         fetch('/api/tables'),
         fetch('/api/menu'),
@@ -196,43 +202,42 @@ export function AppProvider({ children }) {
         const { menuItems: fetchedMenu } = await menuRes.json();
         const { orders: fetchedOrders } = ordersRes.ok ? await ordersRes.json() : { orders: [] };
 
-        // If API has data, use it
-        if (fetchedTables.length > 0 && fetchedMenu.length > 0) {
+        // If API has data, replace sample data
+        if (fetchedTables.length > 0) {
           setTables(fetchedTables);
-          setMenuItems(fetchedMenu);
-          setOrders(fetchedOrders);
         } else {
-          // Initialize with sample data and sync to API
-          const { sampleTables, sampleMenuItems } = initializeSampleData();
-          
           // Send sample data to API
-          await Promise.all([
-            ...sampleTables.map(table => 
+          await Promise.all(
+            sampleTables.map(table => 
               fetch('/api/tables', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(table),
               })
-            ),
-            ...sampleMenuItems.map(item => 
+            )
+          );
+        }
+        
+        if (fetchedMenu.length > 0) {
+          setMenuItems(fetchedMenu);
+        } else {
+          // Send sample data to API
+          await Promise.all(
+            sampleMenuItems.map(item => 
               fetch('/api/menu', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(item),
               })
-            ),
-          ]);
-
-          setTables(sampleTables);
-          setMenuItems(sampleMenuItems);
+            )
+          );
         }
+        
+        setOrders(fetchedOrders);
       }
     } catch (error) {
       console.error('Error initializing data:', error);
-      // If API fails, just use sample data locally (no localStorage)
-      const { sampleTables, sampleMenuItems } = initializeSampleData();
-      setTables(sampleTables);
-      setMenuItems(sampleMenuItems);
+      // Sample data already set above
     } finally {
       setInitialized(true);
     }
@@ -256,7 +261,13 @@ export function AppProvider({ children }) {
       const response = await fetch('/api/tables');
       if (response.ok) {
         const { tables: fetchedTables } = await response.json();
-        setTables(fetchedTables);
+        // Only update if data actually changed to prevent unnecessary re-renders
+        setTables(prev => {
+          if (JSON.stringify(prev) !== JSON.stringify(fetchedTables)) {
+            return fetchedTables;
+          }
+          return prev;
+        });
       }
     } catch (error) {
       console.error('Error fetching tables:', error);
@@ -268,7 +279,13 @@ export function AppProvider({ children }) {
       const response = await fetch('/api/menu');
       if (response.ok) {
         const { menuItems: fetchedMenu } = await response.json();
-        setMenuItems(fetchedMenu);
+        // Only update if data actually changed to prevent unnecessary re-renders
+        setMenuItems(prev => {
+          if (JSON.stringify(prev) !== JSON.stringify(fetchedMenu)) {
+            return fetchedMenu;
+          }
+          return prev;
+        });
       }
     } catch (error) {
       console.error('Error fetching menu:', error);
