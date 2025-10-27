@@ -11,7 +11,7 @@ export default function MenuPage() {
   const { tables } = useApp();
 
   // Find table by table number (backward compatibility)
-  const table = tableNumber ? tables.find(t => t.tableNumber === tableNumber) : null;
+  const table = tableNumber ? tables.find((t: any) => t.tableNumber === tableNumber) : null;
   const isValidTable = !!table;
   const hasTableNumber = tableNumber && tableNumber.trim() !== '';
 

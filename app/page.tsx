@@ -75,7 +75,7 @@ export default function Home() {
                 Scan these QR codes to test the customer ordering interface
               </p>
               <div className="flex flex-wrap justify-center gap-8">
-                {tables.slice(0, 3).map(table => (
+                {tables.slice(0, 3).map((table: any) => (
                   <QRCodeDisplay key={table.id} table={table} />
                 ))}
               </div>
