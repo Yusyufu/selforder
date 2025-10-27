@@ -2,8 +2,10 @@
 
 import MenuDisplay from '@/components/customer/MenuDisplay';
 import Cart from '@/components/customer/Cart';
+import ActiveOrders from '@/components/customer/ActiveOrders';
 import { useParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { useState } from 'react';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +13,7 @@ export default function MenuSlugPage() {
   const params = useParams();
   const slug = params.slug as string;
   const { tables, initialized } = useApp();
+  const [showMenu, setShowMenu] = useState(false);
 
   // Find table by slug
   const table = tables.find((t: any) => t.slug === slug);
@@ -64,15 +67,40 @@ export default function MenuSlugPage() {
           </div>
         )}
 
-        {/* Two Column Layout: Menu and Cart - Mobile-first responsive */}
-        {!isLoading && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-            {/* Menu Display - Takes 2 columns on large screens */}
+        {/* Content */}
+        {!isLoading && isValidTable && (
+          <div className="px-4 md:px-0">
+            {!showMenu ? (
+              /* Show Active Orders First */
+              <ActiveOrders 
+                tableNumber={table.tableNumber}
+                onAddMore={() => setShowMenu(true)}
+              />
+            ) : (
+              /* Show Menu and Cart */
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+                {/* Menu Display - Takes 2 columns on large screens */}
+                <div className="lg:col-span-2">
+                  <MenuDisplay table={table} isValidTable={isValidTable} />
+                </div>
+
+                {/* Cart - Takes 1 column on large screens, sticky on desktop */}
+                <div className="lg:col-span-1">
+                  <div className="lg:sticky lg:top-6">
+                    <Cart table={table} isValidTable={isValidTable} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Invalid Table - Show Menu Anyway */}
+        {!isLoading && !isValidTable && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 px-4 md:px-0">
             <div className="lg:col-span-2">
               <MenuDisplay table={table} isValidTable={isValidTable} />
             </div>
-
-            {/* Cart - Takes 1 column on large screens, sticky on desktop */}
             <div className="lg:col-span-1">
               <div className="lg:sticky lg:top-6">
                 <Cart table={table} isValidTable={isValidTable} />
