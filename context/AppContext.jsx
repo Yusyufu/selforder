@@ -181,160 +181,22 @@ export function AppProvider({ children }) {
     }
   }, []);
 
-  // Initialize data from API or sample data
+  // Initialize data - frontend is source of truth
   const initializeData = async () => {
     try {
-      // Set sample data immediately to avoid blank screen
+      // Just set sample data - no API calls needed
       const { sampleTables, sampleMenuItems } = initializeSampleData();
       setTables(sampleTables);
       setMenuItems(sampleMenuItems);
       setOrders([]);
-      
-      // Then fetch from API
-      const [tablesRes, menuRes, ordersRes] = await Promise.all([
-        fetch('/api/tables'),
-        fetch('/api/menu'),
-        fetch('/api/orders'),
-      ]);
-
-      if (tablesRes.ok && menuRes.ok) {
-        const { tables: fetchedTables } = await tablesRes.json();
-        const { menuItems: fetchedMenu } = await menuRes.json();
-        const { orders: fetchedOrders } = ordersRes.ok ? await ordersRes.json() : { orders: [] };
-
-        // If API has data, replace sample data
-        if (fetchedTables.length > 0) {
-          setTables(fetchedTables);
-        } else {
-          // Send sample data to API
-          await Promise.all(
-            sampleTables.map(table => 
-              fetch('/api/tables', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(table),
-              })
-            )
-          );
-        }
-        
-        if (fetchedMenu.length > 0) {
-          setMenuItems(fetchedMenu);
-        } else {
-          // Send sample data to API
-          await Promise.all(
-            sampleMenuItems.map(item => 
-              fetch('/api/menu', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(item),
-              })
-            )
-          );
-        }
-        
-        setOrders(fetchedOrders);
-      }
     } catch (error) {
       console.error('Error initializing data:', error);
-      // Sample data already set above
     } finally {
       setInitialized(true);
     }
   };
 
-  // Fetch data from API
-  const fetchOrders = async () => {
-    try {
-      const response = await fetch('/api/orders');
-      if (response.ok) {
-        const { orders: fetchedOrders } = await response.json();
-        setOrders(fetchedOrders);
-      }
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-    }
-  };
-
-  const fetchTables = async () => {
-    try {
-      const response = await fetch('/api/tables');
-      if (response.ok) {
-        const { tables: fetchedTables } = await response.json();
-        // Only update if data actually changed
-        setTables(prev => {
-          // Check if lengths are different
-          if (prev.length !== fetchedTables.length) {
-            return fetchedTables;
-          }
-          
-          // Check if any table data changed
-          const hasChanges = fetchedTables.some((newTable, index) => {
-            const oldTable = prev.find(t => t.id === newTable.id);
-            if (!oldTable) return true;
-            
-            // Compare key fields
-            return (
-              oldTable.tableNumber !== newTable.tableNumber ||
-              oldTable.status !== newTable.status ||
-              oldTable.slug !== newTable.slug
-            );
-          });
-          
-          return hasChanges ? fetchedTables : prev;
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching tables:', error);
-    }
-  };
-
-  const fetchMenuItems = async () => {
-    try {
-      const response = await fetch('/api/menu');
-      if (response.ok) {
-        const { menuItems: fetchedMenu } = await response.json();
-        // Only update if data actually changed
-        setMenuItems(prev => {
-          // Check if lengths are different
-          if (prev.length !== fetchedMenu.length) {
-            return fetchedMenu;
-          }
-          
-          // Check if any menu item changed
-          const hasChanges = fetchedMenu.some((newItem, index) => {
-            const oldItem = prev.find(i => i.id === newItem.id);
-            if (!oldItem) return true;
-            
-            // Compare key fields
-            return (
-              oldItem.name !== newItem.name ||
-              oldItem.price !== newItem.price ||
-              oldItem.available !== newItem.available ||
-              oldItem.category !== newItem.category
-            );
-          });
-          
-          return hasChanges ? fetchedMenu : prev;
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching menu:', error);
-    }
-  };
-
-  // Poll for updates every 5 seconds
-  useEffect(() => {
-    if (!initialized) return;
-    
-    const interval = setInterval(() => {
-      fetchOrders();
-      fetchTables();
-      fetchMenuItems();
-    }, 5000); // Poll every 5 seconds
-
-    return () => clearInterval(interval);
-  }, [initialized]);
+  // No polling needed - frontend is the source of truth
 
   // Table management functions
   const addTable = async (tableNumber) => {
@@ -350,27 +212,15 @@ export function AppProvider({ children }) {
     }
 
     const newTable = {
+      id: crypto.randomUUID(),
       tableNumber,
       slug,
       status: 'available',
     };
 
-    try {
-      const response = await fetch('/api/tables', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newTable),
-      });
-
-      if (!response.ok) throw new Error('Failed to create table');
-
-      const { table } = await response.json();
-      setTables([...tables, table]);
-      return table;
-    } catch (error) {
-      console.error('Error creating table:', error);
-      throw error;
-    }
+    // Update state directly - frontend is source of truth
+    setTables([...tables, newTable]);
+    return newTable;
   };
 
   const updateTable = async (id, updates) => {
@@ -384,36 +234,13 @@ export function AppProvider({ children }) {
       }
     }
 
-    try {
-      const response = await fetch('/api/tables', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, ...updates }),
-      });
-
-      if (!response.ok) throw new Error('Failed to update table');
-
-      const { table } = await response.json();
-      setTables(tables.map(t => t.id === id ? table : t));
-    } catch (error) {
-      console.error('Error updating table:', error);
-      throw error;
-    }
+    // Update state directly
+    setTables(tables.map(t => t.id === id ? { ...t, ...updates } : t));
   };
 
   const deleteTable = async (id) => {
-    try {
-      const response = await fetch(`/api/tables?id=${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) throw new Error('Failed to delete table');
-
-      setTables(tables.filter(table => table.id !== id));
-    } catch (error) {
-      console.error('Error deleting table:', error);
-      throw error;
-    }
+    // Update state directly
+    setTables(tables.filter(table => table.id !== id));
   };
 
   // Menu management functions
@@ -430,6 +257,7 @@ export function AppProvider({ children }) {
     }
 
     const newMenuItem = {
+      id: crypto.randomUUID(),
       name: menuItem.name,
       description: menuItem.description || '',
       price: price,
@@ -438,22 +266,9 @@ export function AppProvider({ children }) {
       available: menuItem.available !== undefined ? menuItem.available : true,
     };
 
-    try {
-      const response = await fetch('/api/menu', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newMenuItem),
-      });
-
-      if (!response.ok) throw new Error('Failed to create menu item');
-
-      const { menuItem: createdItem } = await response.json();
-      setMenuItems([...menuItems, createdItem]);
-      return createdItem;
-    } catch (error) {
-      console.error('Error creating menu item:', error);
-      throw error;
-    }
+    // Update state directly
+    setMenuItems([...menuItems, newMenuItem]);
+    return newMenuItem;
   };
 
   const updateMenuItem = async (id, updates) => {
@@ -465,57 +280,21 @@ export function AppProvider({ children }) {
       }
     }
 
-    try {
-      const response = await fetch('/api/menu', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, ...updates }),
-      });
-
-      if (!response.ok) throw new Error('Failed to update menu item');
-
-      const { menuItem } = await response.json();
-      setMenuItems(menuItems.map(item => item.id === id ? menuItem : item));
-    } catch (error) {
-      console.error('Error updating menu item:', error);
-      throw error;
-    }
+    // Update state directly
+    setMenuItems(menuItems.map(item => item.id === id ? { ...item, ...updates } : item));
   };
 
   const deleteMenuItem = async (id) => {
-    try {
-      const response = await fetch(`/api/menu?id=${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) throw new Error('Failed to delete menu item');
-
-      setMenuItems(menuItems.filter(item => item.id !== id));
-    } catch (error) {
-      console.error('Error deleting menu item:', error);
-      throw error;
-    }
+    // Update state directly
+    setMenuItems(menuItems.filter(item => item.id !== id));
   };
 
   const toggleAvailability = async (id) => {
     const item = menuItems.find(item => item.id === id);
     if (!item) return;
 
-    try {
-      const response = await fetch('/api/menu', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, available: !item.available }),
-      });
-
-      if (!response.ok) throw new Error('Failed to toggle availability');
-
-      const { menuItem } = await response.json();
-      setMenuItems(menuItems.map(i => i.id === id ? menuItem : i));
-    } catch (error) {
-      console.error('Error toggling availability:', error);
-      throw error;
-    }
+    // Update state directly
+    setMenuItems(menuItems.map(i => i.id === id ? { ...i, available: !i.available } : i));
   };
 
   // Order management functions
@@ -525,67 +304,27 @@ export function AppProvider({ children }) {
       return sum + (item.price * item.quantity);
     }, 0);
 
-    const orderData = {
+    const newOrder = {
+      id: crypto.randomUUID(),
       tableNumber,
       items,
       total,
       customerName,
       paymentType,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
     };
 
-    try {
-      // Send to API
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orderData),
-      });
-
-      if (!response.ok) throw new Error('Failed to create order');
-
-      const { order: newOrder } = await response.json();
-      
-      // Update local state
-      setOrders([...orders, newOrder]);
-      return newOrder;
-    } catch (error) {
-      console.error('Error creating order:', error);
-      // Fallback to local only if API fails
-      const newOrder = {
-        id: crypto.randomUUID(),
-        ...orderData,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-      };
-      setOrders([...orders, newOrder]);
-      return newOrder;
-    }
+    // Update state directly
+    setOrders([...orders, newOrder]);
+    return newOrder;
   };
 
   const updateOrderStatus = async (id, status) => {
-    try {
-      // Send to API
-      const response = await fetch('/api/orders', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status }),
-      });
-
-      if (!response.ok) throw new Error('Failed to update order');
-
-      const { order: updatedOrder } = await response.json();
-      
-      // Update local state
-      setOrders(orders.map(order =>
-        order.id === id ? updatedOrder : order
-      ));
-    } catch (error) {
-      console.error('Error updating order:', error);
-      // Fallback to local only if API fails
-      setOrders(orders.map(order =>
-        order.id === id ? { ...order, status } : order
-      ));
-    }
+    // Update state directly
+    setOrders(orders.map(order =>
+      order.id === id ? { ...order, status } : order
+    ));
   };
 
   // Reset all data to sample data (useful for demo/testing)

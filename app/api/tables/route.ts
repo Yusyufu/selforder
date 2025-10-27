@@ -1,29 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Use global variable with persistence across requests in same instance
-// For Vercel, we'll use a simple in-memory cache with initialization
-const STORAGE_KEY = 'tables_data';
+// This API acts as a pass-through - frontend is the source of truth
+// We just echo back what frontend sends us
 
-// Global storage that persists across requests in the same instance
-if (!(global as any)[STORAGE_KEY]) {
-  (global as any)[STORAGE_KEY] = [];
-}
-
-function getTables(): any[] {
-  return (global as any)[STORAGE_KEY] || [];
-}
-
-function setTables(tables: any[]) {
-  (global as any)[STORAGE_KEY] = tables;
-}
-
-// GET - Fetch all tables
+// GET - Return empty array (frontend manages its own state)
 export async function GET() {
-  const tables = getTables();
-  return NextResponse.json({ tables });
+  return NextResponse.json({ tables: [] });
 }
 
-// POST - Create new table
+// POST - Just generate ID and return the table
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -32,56 +17,25 @@ export async function POST(request: NextRequest) {
       id: crypto.randomUUID(),
     };
     
-    const tables = getTables();
-    tables.push(newTable);
-    setTables(tables);
-    
     return NextResponse.json({ table: newTable }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to create table' }, { status: 500 });
   }
 }
 
-// PUT - Update table
+// PUT - Just return the updated table
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, ...updates } = body;
-    
-    const tables = getTables();
-    const tableIndex = tables.findIndex(table => table.id === id);
-    if (tableIndex === -1) {
-      return NextResponse.json({ error: 'Table not found' }, { status: 404 });
-    }
-    
-    tables[tableIndex] = { ...tables[tableIndex], ...updates };
-    setTables(tables);
-    
-    return NextResponse.json({ table: tables[tableIndex] });
+    return NextResponse.json({ table: body });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to update table' }, { status: 500 });
   }
 }
 
-// DELETE - Delete table
+// DELETE - Just return success
 export async function DELETE(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    
-    if (!id) {
-      return NextResponse.json({ error: 'ID is required' }, { status: 400 });
-    }
-    
-    const tables = getTables();
-    const tableIndex = tables.findIndex(table => table.id === id);
-    if (tableIndex === -1) {
-      return NextResponse.json({ error: 'Table not found' }, { status: 404 });
-    }
-    
-    tables.splice(tableIndex, 1);
-    setTables(tables);
-    
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to delete table' }, { status: 500 });

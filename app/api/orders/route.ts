@@ -1,27 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Use global variable with persistence across requests in same instance
-const STORAGE_KEY = 'orders_data';
+// This API acts as a pass-through - frontend is the source of truth
 
-if (!(global as any)[STORAGE_KEY]) {
-  (global as any)[STORAGE_KEY] = [];
-}
-
-function getOrders(): any[] {
-  return (global as any)[STORAGE_KEY] || [];
-}
-
-function setOrders(orders: any[]) {
-  (global as any)[STORAGE_KEY] = orders;
-}
-
-// GET - Fetch all orders
+// GET - Return empty array (frontend manages its own state)
 export async function GET() {
-  const orders = getOrders();
-  return NextResponse.json({ orders });
+  return NextResponse.json({ orders: [] });
 }
 
-// POST - Create new order
+// POST - Just generate ID and return the order
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -32,32 +18,17 @@ export async function POST(request: NextRequest) {
       status: 'pending',
     };
     
-    const orders = getOrders();
-    orders.push(newOrder);
-    setOrders(orders);
-    
     return NextResponse.json({ order: newOrder }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
   }
 }
 
-// PATCH - Update order status
+// PATCH - Just return the updated order
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, status } = body;
-    
-    const orders = getOrders();
-    const orderIndex = orders.findIndex(o => o.id === id);
-    if (orderIndex === -1) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-    }
-    
-    orders[orderIndex] = { ...orders[orderIndex], status };
-    setOrders(orders);
-    
-    return NextResponse.json({ order: orders[orderIndex] });
+    return NextResponse.json({ order: body });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
   }
