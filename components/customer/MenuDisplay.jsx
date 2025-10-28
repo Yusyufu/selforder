@@ -4,12 +4,11 @@ import { useApp } from '@/context/AppContext';
 import { useCart } from '@/context/CartContext';
 import { useState } from 'react';
 
-export default function MenuDisplay({ table, isValidTable, searchQuery = '' }) {
+export default function MenuDisplay({ table, isValidTable, searchQuery = '', selectedCategory = 'All' }) {
   const { menuItems } = useApp();
   const { addToCart, cartItems } = useCart();
   const [quantities, setQuantities] = useState({});
   const [addedItems, setAddedItems] = useState({});
-  const [selectedCategory, setSelectedCategory] = useState('All');
 
   // Filter to show only available items
   let availableItems = menuItems.filter(item => item.available);
@@ -17,7 +16,7 @@ export default function MenuDisplay({ table, isValidTable, searchQuery = '' }) {
   // Apply search filter
   if (searchQuery && searchQuery.trim() !== '') {
     const query = searchQuery.toLowerCase();
-    availableItems = availableItems.filter(item => 
+    availableItems = availableItems.filter(item =>
       item.name.toLowerCase().includes(query) ||
       item.description.toLowerCase().includes(query) ||
       item.category.toLowerCase().includes(query)
@@ -34,10 +33,10 @@ export default function MenuDisplay({ table, isValidTable, searchQuery = '' }) {
   }, {});
 
   const categories = Object.keys(itemsByCategory).sort();
-  
+
   // Filter items based on selected category
-  const filteredCategories = selectedCategory === 'All' 
-    ? categories 
+  const filteredCategories = selectedCategory === 'All'
+    ? categories
     : categories.filter(cat => cat === selectedCategory);
 
   const handleQuantityChange = (itemId, value) => {
@@ -56,7 +55,7 @@ export default function MenuDisplay({ table, isValidTable, searchQuery = '' }) {
 
     const quantity = quantities[item.id] || 1;
     addToCart(item, quantity);
-    
+
     // Show visual feedback
     setAddedItems(prev => ({ ...prev, [item.id]: true }));
     setTimeout(() => {
@@ -96,15 +95,14 @@ export default function MenuDisplay({ table, isValidTable, searchQuery = '' }) {
           {/* Gradient fade indicators for scroll */}
           <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white to-transparent pointer-events-none z-10 md:hidden"></div>
           <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent pointer-events-none z-10 md:hidden"></div>
-          
+
           <div className="flex gap-2 overflow-x-auto scrollbar-hide snap-x px-4 md:px-0">
             <button
               onClick={() => setSelectedCategory('All')}
-              className={`flex-shrink-0 px-5 py-2.5 rounded-full font-bold text-sm whitespace-nowrap transition-all snap-start ${
-                selectedCategory === 'All'
+              className={`flex-shrink-0 px-5 py-2.5 rounded-full font-bold text-sm whitespace-nowrap transition-all snap-start ${selectedCategory === 'All'
                   ? 'bg-gray-900 text-white shadow-md'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:scale-95'
-              }`}
+                }`}
             >
               Semua
             </button>
@@ -112,11 +110,10 @@ export default function MenuDisplay({ table, isValidTable, searchQuery = '' }) {
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
-                className={`flex-shrink-0 px-5 py-2.5 rounded-full font-bold text-sm whitespace-nowrap transition-all snap-start ${
-                  selectedCategory === category
+                className={`flex-shrink-0 px-5 py-2.5 rounded-full font-bold text-sm whitespace-nowrap transition-all snap-start ${selectedCategory === category
                     ? 'bg-gray-900 text-white shadow-md'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:scale-95'
-                }`}
+                  }`}
               >
                 {category}
               </button>
@@ -133,19 +130,19 @@ export default function MenuDisplay({ table, isValidTable, searchQuery = '' }) {
             </h2>
             <div className="w-16 h-1 bg-gray-900 rounded-full"></div>
           </div>
-          
+
           {/* Mobile-first grid layout */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 px-4 md:px-0">
             {itemsByCategory[category].map(item => (
-              <div 
-                key={item.id} 
+              <div
+                key={item.id}
                 className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all"
               >
                 {/* Item Image */}
                 {item.imageUrl && (
                   <div className="w-full h-48 sm:h-52 bg-gray-100 relative">
-                    <img 
-                      src={item.imageUrl} 
+                    <img
+                      src={item.imageUrl}
                       alt={item.name}
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -154,7 +151,7 @@ export default function MenuDisplay({ table, isValidTable, searchQuery = '' }) {
                     />
                   </div>
                 )}
-                
+
                 {/* Item Details */}
                 <div className="p-4 space-y-3">
                   <div className="min-h-[60px]">
@@ -167,7 +164,7 @@ export default function MenuDisplay({ table, isValidTable, searchQuery = '' }) {
                       </p>
                     )}
                   </div>
-                  
+
                   {/* Price */}
                   <div className="pt-2 border-t border-gray-100">
                     <span className="text-lg font-bold text-gray-900">
@@ -197,18 +194,17 @@ export default function MenuDisplay({ table, isValidTable, searchQuery = '' }) {
                         +
                       </button>
                     </div>
-                    
+
                     {/* Add button */}
                     <button
                       onClick={() => handleAddToCart(item)}
                       disabled={!isValidTable}
-                      className={`flex-1 py-3 px-4 rounded-lg font-bold transition-all text-sm shadow-sm ${
-                        !isValidTable
+                      className={`flex-1 py-3 px-4 rounded-lg font-bold transition-all text-sm shadow-sm ${!isValidTable
                           ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                           : addedItems[item.id]
-                          ? 'bg-green-600 text-white shadow-green-200'
-                          : 'bg-gray-900 text-white hover:bg-gray-800 active:scale-95 shadow-gray-200'
-                      }`}
+                            ? 'bg-green-600 text-white shadow-green-200'
+                            : 'bg-gray-900 text-white hover:bg-gray-800 active:scale-95 shadow-gray-200'
+                        }`}
                       title={!isValidTable ? 'Please scan a valid QR code to add items' : ''}
                     >
                       {addedItems[item.id] ? '✓ Ditambahkan' : 'Tambah'}
