@@ -4,7 +4,7 @@ import { useApp } from '@/context/AppContext';
 import { useCart } from '@/context/CartContext';
 import { useState } from 'react';
 
-export default function MenuDisplay({ table, isValidTable }) {
+export default function MenuDisplay({ table, isValidTable, searchQuery = '' }) {
   const { menuItems } = useApp();
   const { addToCart, cartItems } = useCart();
   const [quantities, setQuantities] = useState({});
@@ -12,7 +12,17 @@ export default function MenuDisplay({ table, isValidTable }) {
   const [selectedCategory, setSelectedCategory] = useState('All');
 
   // Filter to show only available items
-  const availableItems = menuItems.filter(item => item.available);
+  let availableItems = menuItems.filter(item => item.available);
+
+  // Apply search filter
+  if (searchQuery && searchQuery.trim() !== '') {
+    const query = searchQuery.toLowerCase();
+    availableItems = availableItems.filter(item => 
+      item.name.toLowerCase().includes(query) ||
+      item.description.toLowerCase().includes(query) ||
+      item.category.toLowerCase().includes(query)
+    );
+  }
 
   // Group items by category
   const itemsByCategory = availableItems.reduce((acc, item) => {
@@ -63,7 +73,17 @@ export default function MenuDisplay({ table, isValidTable }) {
   if (availableItems.length === 0) {
     return (
       <div className="text-center py-12 px-4">
-        <p className="text-gray-500 text-lg">Tidak ada menu yang tersedia saat ini.</p>
+        {searchQuery ? (
+          <div>
+            <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <p className="text-gray-500 text-lg font-semibold mb-2">Tidak ada hasil untuk "{searchQuery}"</p>
+            <p className="text-gray-400 text-sm">Coba kata kunci lain atau hapus pencarian</p>
+          </div>
+        ) : (
+          <p className="text-gray-500 text-lg">Tidak ada menu yang tersedia saat ini.</p>
+        )}
       </div>
     );
   }
